@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require("../models/User"); // mongodb user model
 const bcrypt = require('bcrypt'); // Password handler
 const nodemailer = require("nodemailer"); // email handler
+const jwt = require('jsonwebtoken'); // jsonwebtoken
 const {sendEmailVerification} = require("./mail")
 require("dotenv").config(); // env variables
 
@@ -19,8 +20,8 @@ router.post('/signup', async (req, res) => {
     }
 
     try{
-        let user = await  User.find({email:email});
-        if(user.length>0){
+        let user = await User.findOne({email});
+        if(user){
             res.status(400).json({error: "User already exists!"})
         }else{
             const saltRounds = 10;
@@ -63,16 +64,33 @@ router.post('/signin', async (req, res) => {
     }
 })
 
-router.get('/verify/:id', async (req, res) => {
-    try{
-        const user = await User.findOne({ _id: req.params.id });
-        if(!user) res.status(400).send("Invalid Link!");
+router.get('/verify/:id/token/:token', async (req, res) => {
+    const {token} = req.params;
 
-        await User.updateOne({email: user.email, verified: true});
-        res.send("Email verified successfully!")
-    }catch(err){
-        res.status(400).send("An error occured!")
-    }
+    // Verifying the JWT token 
+    jwt.verify(token, 'ourSecretKey', async function(err, decoded) {
+        if (err) {
+            console.log(err);
+            res.send("Email verification failed, possibly the link is invalid or expired");
+        }
+        else {
+            const user = await User.findOne({ _id: req.params.id });
+            if(!user) res.status(400).send("Invalid Link!");
+
+            await User.updateOne({email: user.email, verified: true});
+            res.send("Email verified successfully");
+        }
+    });
+    // ----- with id - verifying email of user
+    // try{
+    //     const user = await User.findOne({ _id: req.params.id });
+    //     if(!user) res.status(400).send("Invalid Link!");
+
+    //     await User.updateOne({email: user.email, verified: true});
+    //     res.send("Email verified successfully!")
+    // }catch(err){
+    //     res.status(400).send("An error occured!")
+    // }
 })
 
 module.exports = router;

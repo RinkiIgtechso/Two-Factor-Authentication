@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer"); // email handler
+const jwt = require('jsonwebtoken'); // jsonwebtoken
 const {v4: uuidv4} = require('uuid'); // unique string
 
 require("dotenv").config(); // env variables
@@ -32,6 +33,10 @@ transporter.verify((error, success) => {
     }
 })
 
+const token = jwt.sign({
+  data: 'Token Data'
+}, 'ourSecretKey', { expiresIn: '10m' });
+
 const sendEmailVerification = (RECEIVERS_EMAIL, res) => {
   console.log("sending email verification")
   const emailOptions = {
@@ -44,7 +49,7 @@ const sendEmailVerification = (RECEIVERS_EMAIL, res) => {
         <div style="width:70%;margin:auto;background-color:#f9fafb;text-align:center;padding:20px;box-shadow:rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;">
           <h2>Get Started </h2>
           <p>Your company account has created successfully on Reach EMS. Please verify your account by clicking the link below:</p>
-          <p>Click this <a href=${`http://localhost:3000/user/verify/${res._id}`}>link</a></p>
+          <p>Click this <a href=${`http://localhost:3000/user/verify/${res._id}/token/${token}`}>link</a></p>
           </div>
         <div style="margin-top:35px;line-height:10px;">
           <p style="font-weight:bold;font-size:1.1rem;">Thank you</p><p>XYZ</p>
