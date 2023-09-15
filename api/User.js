@@ -64,12 +64,11 @@ router.post('/signin', async (req, res) => {
 })
 
 router.get('/verify/:id', async (req, res) => {
-    console.log("User email verifying")
     try{
         const user = await User.findOne({ _id: req.params.id });
         if(!user) res.status(400).send("Invalid Link!");
 
-        await User.updateOne({_id: user._id, verified: true});
+        await User.updateOne({email: user.email, verified: true});
         res.send("Email verified successfully!")
     }catch(err){
         res.status(400).send("An error occured!")
