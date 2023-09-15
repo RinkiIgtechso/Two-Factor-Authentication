@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const User = require("../models/User"); // mongodb user model
+const bcrypt = require('bcrypt'); // Password handler
+const nodemailer = require("nodemailer"); // email handler
+const {sendEmailVerification} = require("./mail")
+require("dotenv").config(); // env variables
 
-// mongodb user model
-const User = require("../models/User");
- 
-// Password handler
-const bcrypt = require('bcrypt');
- 
 //signin
 router.post('/signup', async (req, res) => {
     let {name, email, password, dateOfBirth} = req.body;
@@ -16,20 +15,7 @@ router.post('/signup', async (req, res) => {
     dateOfBirth = dateOfBirth.trim();
 
     if(!name || !email || !password || !dateOfBirth){
-
         res.status(400).json({error: "All input is required!"})
-    }else if(!/^[a-zA-Z ]*$/.test(name)){
-
-        res.status(400).json({error:"Invalid name entered"})
-    }else if(!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
-
-        res.status(400).json({error:"Invalid email entered"})
-    }else if(!new Date(dateOfBirth).getTime()){
-
-         res.status(400).json({error:"Invalid date of birth entered"})
-    }else if(password.length<8){
-
-        res.status(400).json({error:"Password is too short"})
     }
 
     try{
@@ -40,9 +26,11 @@ router.post('/signup', async (req, res) => {
             const saltRounds = 10;
             let encryptPassword = await bcrypt.hash(password, saltRounds);
             const newUser = new User({
-                name, email, password: encryptPassword, dateOfBirth
+                name, email, password: encryptPassword, dateOfBirth, varified: false
             });
             await newUser.save();
+            // handled account verification
+            sendEmailVerification(newUser.email, newUser);
             res.status(200).json(newUser)
         }
     }catch(error){
@@ -58,7 +46,7 @@ router.post('/signin', async (req, res) => {
 
     try{
         const user = await User.findOne({email});
-        console.log(user)
+
         if(user){
             const hashedPassword = user.password;
             const pass = await bcrypt.compare(password, hashedPassword);
@@ -72,6 +60,19 @@ router.post('/signin', async (req, res) => {
         }
     }catch(err){
         res.status(400).json(err);
+    }
+})
+
+router.get('/verify/:id', async (req, res) => {
+    console.log("User email verifying")
+    try{
+        const user = await User.findOne({ _id: req.params.id });
+        if(!user) res.status(400).send("Invalid Link!");
+
+        await User.updateOne({_id: user._id, verified: true});
+        res.send("Email verified successfully!")
+    }catch(err){
+        res.status(400).send("An error occured!")
     }
 })
 
